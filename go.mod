@@ -17,5 +17,3 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-replace github.com/go-kratos/kratos/v2 => github.com/Paradox315/kratos/v2 v2.1.7
