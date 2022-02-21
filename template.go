@@ -9,87 +9,48 @@ import (
 var httpTemplate = `
 {{$svrType := .ServiceType}}
 {{$svrName := .ServiceName}}
-type {{.ServiceType}}HTTPServer interface {
+type {{.ServiceType}}XHTTPServer interface {
 {{- range .MethodSets}}
 	{{.Name}}(context.Context, *{{.Request}}) (*{{.Reply}}, error)
 {{- end}}
 }
 
-func Register{{.ServiceType}}HTTPServer(s *http.Server, srv {{.ServiceType}}HTTPServer) {
-	r := s.Route("/")
-	{{- range .Methods}}
-	r.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_HTTP_Handler(srv))
-	{{- end}}
+func Register{{.ServiceType}}XHTTPServer(s *http.Server, srv {{.ServiceType}}XHTTPServer) {
+	s.Route(func(r fiber.Router) {
+		api := r.Group("{{.Prefix}}")
+		{{- range .Methods}}
+		api.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv))
+		{{- end}}
+	})
 }
 
 {{range .Methods}}
-func _{{$svrType}}_{{.Name}}{{.Num}}_HTTP_Handler(srv {{$svrType}}HTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
+func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
 		var in {{.Request}}
 		{{- if .HasBody}}
-		if err := ctx.Bind(&in{{.Body}}); err != nil {
+		if err := binding.BindBody(ctx,&in{{.Body}}); err != nil {
 			return err
 		}
+		{{- end}}
+		{{- if .HasQuery}}
+		if err := binding.BindQuery(ctx,&in{{.Body}}); err != nil {
+			return err
+		}
+		{{- end}}
+		{{- if .HasParams}}
+		if err := binding.BindParams(ctx,&in); err != nil {
+			return err
+		}
+		{{- end}}
 		
-		{{- if not (eq .Body "")}}
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		{{- end}}
-		{{- else}}
-		if err := ctx.BindQuery(&in{{.Body}}); err != nil {
-			return err
-		}
-		{{- end}}
-		{{- if .HasVars}}
-		if err := ctx.BindVars(&in); err != nil {
-			return err
-		}
-		{{- end}}
-		http.SetOperation(ctx,"/{{$svrName}}/{{.Name}}")
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.{{.Name}}(ctx, req.(*{{.Request}}))
-		})
-		out, err := h(ctx, &in)
+		out, err := srv.{{.Name}}(ctx, req.(*{{.Request}}))
 		if err != nil {
 			return err
 		}
 		reply := out.(*{{.Reply}})
 		return ctx.Result(200, reply{{.ResponseBody}})
 	}
-}
-{{end}}
-
-type {{.ServiceType}}HTTPClient interface {
-{{- range .MethodSets}}
-	{{.Name}}(ctx context.Context, req *{{.Request}}, opts ...http.CallOption) (rsp *{{.Reply}}, err error) 
-{{- end}}
-}
-	
-type {{.ServiceType}}HTTPClientImpl struct{
-	cc *http.Client
-}
-	
-func New{{.ServiceType}}HTTPClient (client *http.Client) {{.ServiceType}}HTTPClient {
-	return &{{.ServiceType}}HTTPClientImpl{client}
-}
-
-{{range .MethodSets}}
-func (c *{{$svrType}}HTTPClientImpl) {{.Name}}(ctx context.Context, in *{{.Request}}, opts ...http.CallOption) (*{{.Reply}}, error) {
-	var out {{.Reply}}
-	pattern := "{{.Path}}"
-	path := binding.EncodeURL(pattern, in, {{not .HasBody}})
-	opts = append(opts, http.Operation("/{{$svrName}}/{{.Name}}"))
-	opts = append(opts, http.PathTemplate(pattern))
-	{{if .HasBody -}}
-	err := c.cc.Invoke(ctx, "{{.Method}}", path, in{{.Body}}, &out{{.ResponseBody}}, opts...)
-	{{else -}} 
-	err := c.cc.Invoke(ctx, "{{.Method}}", path, nil, &out{{.ResponseBody}}, opts...)
-	{{end -}}
-	if err != nil {
-		return nil, err
-	}
-	return &out, err
 }
 {{end}}
 `
