@@ -32,9 +32,14 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 		if err := binding.BindBody(ctx,&in{{.Body}}); err != nil {
 			return err
 		}
+		
+		{{- if not (eq .Body "")}}
+		if err := binding.BindQuery(ctx,&in); err != nil {
+			return err
+		}
 		{{- end}}
-		{{- if .HasQuery}}
-		if err := binding.BindQuery(ctx,&in{{.Body}}); err != nil {
+		{{- else}}
+		if err := binding.BindQuery(ctx,&in); err != nil {
 			return err
 		}
 		{{- end}}
@@ -49,7 +54,7 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 			return err
 		}
 		reply := out.(*{{.Reply}})
-		return ctx.Result(200, reply{{.ResponseBody}})
+		return  ctx.JSON(fiber.Map{"data": reply})
 	}
 }
 {{end}}
@@ -72,8 +77,8 @@ type methodDesc struct {
 	// http_rule
 	Path         string
 	Method       string
-	HasVars      bool
 	HasBody      bool
+	HasParams    bool
 	Body         string
 	ResponseBody string
 }

@@ -6,8 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"google.golang.org/protobuf/reflect/protoreflect"
-
 	"google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
@@ -16,8 +14,8 @@ import (
 
 const (
 	contextPackage       = protogen.GoImportPath("context")
-	transportHTTPPackage = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/http")
-	bindingPackage       = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/http/binding")
+	transportHTTPPackage = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp")
+	bindingPackage       = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp/binding")
 )
 
 var methodSets = make(map[string]int)
@@ -79,7 +77,7 @@ func genService(gen *protogen.Plugin, file *protogen.File, g *protogen.Generated
 			sd.Methods = append(sd.Methods, buildHTTPRule(g, method, rule))
 		} else if !omitempty {
 			path := fmt.Sprintf("/%s/%s", service.Desc.FullName(), method.Desc.Name())
-			sd.Methods = append(sd.Methods, buildMethodDesc(g, method, "POST", path))
+			sd.Methods = append(sd.Methods, buildMethodDesc(g, method, "Post", path))
 		}
 	}
 	if len(sd.Methods) != 0 {
@@ -112,19 +110,19 @@ func buildHTTPRule(g *protogen.GeneratedFile, m *protogen.Method, rule *annotati
 	switch pattern := rule.Pattern.(type) {
 	case *annotations.HttpRule_Get:
 		path = pattern.Get
-		method = "GET"
+		method = "Get"
 	case *annotations.HttpRule_Put:
 		path = pattern.Put
-		method = "PUT"
+		method = "Put"
 	case *annotations.HttpRule_Post:
 		path = pattern.Post
-		method = "POST"
+		method = "Post"
 	case *annotations.HttpRule_Delete:
 		path = pattern.Delete
-		method = "DELETE"
+		method = "Delete"
 	case *annotations.HttpRule_Patch:
 		path = pattern.Patch
-		method = "PATCH"
+		method = "Patch"
 	case *annotations.HttpRule_Custom:
 		path = pattern.Custom.Path
 		method = pattern.Custom.Kind
@@ -132,7 +130,7 @@ func buildHTTPRule(g *protogen.GeneratedFile, m *protogen.Method, rule *annotati
 	body = rule.Body
 	responseBody = rule.ResponseBody
 	md := buildMethodDesc(g, m, method, path)
-	if method == "GET" || method == "DELETE" {
+	if method == "Get" || method == "Delete" {
 		if body != "" {
 			_, _ = fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: %s %s body should not be declared.\n", method, path)
 		}
@@ -158,72 +156,19 @@ func buildHTTPRule(g *protogen.GeneratedFile, m *protogen.Method, rule *annotati
 func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method, method, path string) *methodDesc {
 	defer func() { methodSets[m.GoName]++ }()
 
-	vars := buildPathVars(path)
-	fields := m.Input.Desc.Fields()
-
-	for v, s := range vars {
-		if s != nil {
-			path = replacePath(v, *s, path)
-		}
-		for _, field := range strings.Split(v, ".") {
-			if strings.TrimSpace(field) == "" {
-				continue
-			}
-			if strings.Contains(field, ":") {
-				field = strings.Split(field, ":")[0]
-			}
-			fd := fields.ByName(protoreflect.Name(field))
-			if fd == nil {
-				fmt.Fprintf(os.Stderr, "\u001B[31mERROR\u001B[m: The corresponding field '%s' declaration in message could not be found in '%s'\n", v, path)
-				os.Exit(2)
-			}
-			if fd.IsMap() {
-				fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: The field in path:'%s' shouldn't be a map.\n", v)
-			} else if fd.IsList() {
-				fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: The field in path:'%s' shouldn't be a list.\n", v)
-			} else if fd.Kind() == protoreflect.MessageKind || fd.Kind() == protoreflect.GroupKind {
-				fields = fd.Message().Fields()
-			}
-		}
-	}
 	return &methodDesc{
-		Name:    m.GoName,
-		Num:     methodSets[m.GoName],
-		Request: g.QualifiedGoIdent(m.Input.GoIdent),
-		Reply:   g.QualifiedGoIdent(m.Output.GoIdent),
-		Path:    path,
-		Method:  method,
-		HasVars: len(vars) > 0,
+		Name:      m.GoName,
+		Num:       methodSets[m.GoName],
+		Request:   g.QualifiedGoIdent(m.Input.GoIdent),
+		Reply:     g.QualifiedGoIdent(m.Output.GoIdent),
+		Path:      path,
+		Method:    method,
+		HasParams: hasPathParams(path),
 	}
 }
 
-func buildPathVars(path string) (res map[string]*string) {
-	res = make(map[string]*string)
-	pattern := regexp.MustCompile(`(?i){([a-z\.0-9_\s]*)=?([^{}]*)}`)
-	matches := pattern.FindAllStringSubmatch(path, -1)
-	for _, m := range matches {
-		name := strings.TrimSpace(m[1])
-		if len(name) > 1 && len(m[2]) > 0 {
-			res[name] = &m[2]
-		} else {
-			res[name] = nil
-		}
-	}
-	return
-}
-
-func replacePath(name string, value string, path string) string {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?i){([\s]*%s[\s]*)=?([^{}]*)}`, name))
-	idx := pattern.FindStringIndex(path)
-	if len(idx) > 0 {
-		path = fmt.Sprintf("%s{%s:%s}%s",
-			path[:idx[0]], // The start of the match
-			name,
-			strings.ReplaceAll(value, "*", ".*"),
-			path[idx[1]:],
-		)
-	}
-	return path
+func hasPathParams(path string) bool {
+	return regexp.MustCompile(`(?i):([a-z\.0-9_\s]*)`).MatchString(path)
 }
 
 func camelCaseVars(s string) string {
