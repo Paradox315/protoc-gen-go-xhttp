@@ -45,8 +45,8 @@ func generateFileContent(gen *protogen.Plugin, file *protogen.File, g *protogen.
 	g.P("// This is a compile-time assertion to ensure that this generated file")
 	g.P("// is compatible with the kratos package it is being compiled against.")
 	g.P("var _ = new(", contextPackage.Ident("Context"), ")")
-	g.P("var _ = ", bindingPackage.Ident("EncodeURL"))
-	g.P("const _ = ", transportHTTPPackage.Ident("SupportPackageIsVersion1"))
+	g.P("var _ = ", bindingPackage.Ident("BindBody"))
+	//g.P("const _ = ", transportHTTPPackage.Ident("SupportPackageIsVersion1"))
 	g.P()
 
 	for _, service := range file.Services {
@@ -61,9 +61,10 @@ func genService(gen *protogen.Plugin, file *protogen.File, g *protogen.Generated
 	}
 	// HTTP Server.
 	sd := &serviceDesc{
-		ServiceType: service.GoName,
-		ServiceName: string(service.Desc.FullName()),
-		Metadata:    file.Desc.Path(),
+		ServiceType:   service.GoName,
+		ServiceName:   string(service.Desc.FullName()),
+		ServicePrefix: buildPrefix(string(service.Desc.FullName())),
+		Metadata:      file.Desc.Path(),
 	}
 	for _, method := range service.Methods {
 		if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
@@ -170,7 +171,10 @@ func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method, method, path
 func hasPathParams(path string) bool {
 	return regexp.MustCompile(`(?i):([a-z\.0-9_\s]*)`).MatchString(path)
 }
-
+func buildPrefix(serviceName string) string {
+	prefix := "api/" + strings.ReplaceAll(serviceName, ".", "/")
+	return strings.ToLower(prefix)
+}
 func camelCaseVars(s string) string {
 	vars := make([]string, 0)
 	subs := strings.Split(s, ".")

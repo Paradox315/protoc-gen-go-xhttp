@@ -15,9 +15,9 @@ type {{.ServiceType}}XHTTPServer interface {
 {{- end}}
 }
 
-func Register{{.ServiceType}}XHTTPServer(s *http.Server, srv {{.ServiceType}}XHTTPServer) {
+func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XHTTPServer) {
 	s.Route(func(r fiber.Router) {
-		api := r.Group("{{.Prefix}}")
+		api := r.Group("{{.ServicePrefix}}")
 		{{- range .Methods}}
 		api.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv))
 		{{- end}}
@@ -29,43 +29,43 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 	return func(ctx *fiber.Ctx) error {
 		var in {{.Request}}
 		{{- if .HasBody}}
-		if err := binding.BindBody(ctx,&in{{.Body}}); err != nil {
+		if err := binding.BindBody(ctx, &in{{.Body}}); err != nil {
 			return err
 		}
 		
 		{{- if not (eq .Body "")}}
-		if err := binding.BindQuery(ctx,&in); err != nil {
+		if err := binding.BindQuery(ctx, &in); err != nil {
 			return err
 		}
 		{{- end}}
 		{{- else}}
-		if err := binding.BindQuery(ctx,&in); err != nil {
+		if err := binding.BindQuery(ctx, &in); err != nil {
 			return err
 		}
 		{{- end}}
 		{{- if .HasParams}}
-		if err := binding.BindParams(ctx,&in); err != nil {
+		if err := binding.BindParams(ctx, &in); err != nil {
 			return err
 		}
 		{{- end}}
 		
-		out, err := srv.{{.Name}}(ctx, req.(*{{.Request}}))
+		reply, err := srv.{{.Name}}(ctx.Context(), &in)
 		if err != nil {
 			return err
 		}
-		reply := out.(*{{.Reply}})
-		return  ctx.JSON(fiber.Map{"data": reply})
+		return ctx.JSON(fiber.Map{"data": reply})
 	}
 }
 {{end}}
 `
 
 type serviceDesc struct {
-	ServiceType string // Greeter
-	ServiceName string // helloworld.Greeter
-	Metadata    string // api/helloworld/helloworld.proto
-	Methods     []*methodDesc
-	MethodSets  map[string]*methodDesc
+	ServiceType   string // Greeter
+	ServiceName   string // helloworld.Greeter
+	ServicePrefix string // /api/helloworld/greeter
+	Metadata      string // api/helloworld/helloworld.proto
+	Methods       []*methodDesc
+	MethodSets    map[string]*methodDesc
 }
 
 type methodDesc struct {
