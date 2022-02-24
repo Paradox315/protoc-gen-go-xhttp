@@ -38,7 +38,7 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 			return err
 		}
 		{{- end}}
-		{{- else}}
+		{{- else if not .HasParams}}
 		if err := binding.BindQuery(ctx, &in); err != nil {
 			return err
 		}
