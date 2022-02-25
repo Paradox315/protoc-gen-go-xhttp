@@ -53,7 +53,7 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 		if err != nil {
 			return err
 		}
-		return ctx.JSON(fiber.Map{"data": reply})
+		return ApiState.Success().SendData(ctx, reply)
 	}
 }
 {{end}}
