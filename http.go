@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -13,9 +14,11 @@ import (
 )
 
 const (
+	// The name of the package that contains the generated code.
 	contextPackage       = protogen.GoImportPath("context")
 	transportHTTPPackage = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp")
 	bindingPackage       = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp/binding")
+	middlewarePackage    = protogen.GoImportPath("github.com/go-kratos/kratos/v2/middleware")
 )
 
 var methodSets = make(map[string]int)
@@ -47,6 +50,7 @@ func generateFileContent(gen *protogen.Plugin, file *protogen.File, g *protogen.
 	g.P("var _ = new(", contextPackage.Ident("Context"), ")")
 	g.P("var _ = ", bindingPackage.Ident("BindBody"))
 	g.P("const _ = ", transportHTTPPackage.Ident("SupportPackageIsVersion1"))
+	g.P("const _ = ", middlewarePackage.Ident("SupportPackageIsVersion1"))
 
 	g.P()
 
@@ -62,10 +66,21 @@ func genService(gen *protogen.Plugin, file *protogen.File, g *protogen.Generated
 	}
 	// HTTP Server.
 	sd := &serviceDesc{
-		ServiceType:   service.GoName,
-		ServiceName:   string(service.Desc.FullName()),
-		ServicePrefix: buildPrefix(string(service.Desc.FullName())),
-		Metadata:      file.Desc.Path(),
+		ServiceType: service.GoName,
+		ServiceName: string(service.Desc.FullName()),
+		Metadata:    file.Desc.Path(),
+	}
+	anno, err := buildAnnotation(service.Comments.Leading.String())
+	if err != nil {
+		log.Panicf("buildAnnotation: %v", err)
+		return
+	}
+	sd.ServiceAnnotation = anno
+	sd.ServiceComments = anno.Comment
+	if len(anno.Path) != 0 {
+		sd.ServicePrefix = "api/" + anno.Path
+	} else {
+		sd.ServicePrefix = buildPrefix(string(service.Desc.FullName()))
 	}
 	for _, method := range service.Methods {
 		if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
@@ -132,6 +147,16 @@ func buildHTTPRule(g *protogen.GeneratedFile, m *protogen.Method, rule *annotati
 	body = rule.Body
 	responseBody = rule.ResponseBody
 	md := buildMethodDesc(g, m, method, path)
+	if hasPathParams(path) {
+		md.HasParams = true
+		md.Path = buildPath(path)
+	}
+	anno, err := buildAnnotation(m.Comments.Leading.String())
+	if err != nil {
+		log.Panicf("buildAnnotation error: %v", err)
+	}
+	md.Annotation = anno
+	md.Comments = anno.Comment
 	if method == "Get" || method == "Delete" {
 		if body != "" {
 			_, _ = fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: %s %s body should not be declared.\n", method, path)
@@ -159,23 +184,76 @@ func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method, method, path
 	defer func() { methodSets[m.GoName]++ }()
 
 	return &methodDesc{
-		Name:      m.GoName,
-		Num:       methodSets[m.GoName],
-		Request:   g.QualifiedGoIdent(m.Input.GoIdent),
-		Reply:     g.QualifiedGoIdent(m.Output.GoIdent),
-		Path:      path,
-		Method:    method,
-		HasParams: hasPathParams(path),
+		Name:     m.GoName,
+		Num:      methodSets[m.GoName],
+		Request:  g.QualifiedGoIdent(m.Input.GoIdent),
+		Reply:    g.QualifiedGoIdent(m.Output.GoIdent),
+		Path:     path,
+		Method:   method,
+		Comments: m.Comments.Leading.String()[:len(m.Comments.Leading.String())-1],
 	}
 }
 
 func hasPathParams(path string) bool {
-	return regexp.MustCompile(`(?i):([a-z\.0-9_\s]*)`).MatchString(path)
+	return regexp.MustCompile(`(?i){([a-z\.0-9_\s]*)}`).MatchString(path)
 }
+
+func buildPath(path string) string {
+	return regexp.MustCompile(`(?i){([a-z\.0-9_\s]*)}`).ReplaceAllStringFunc(path, func(s string) string {
+		return ":" + strings.TrimSpace(s[1:len(s)-1])
+	})
+}
+
+func buildAnnotation(comment string) (anno *annotation, err error) {
+	if len(comment) == 0 {
+		return
+	}
+	anno = &annotation{}
+	comments := strings.Split(comment, "\n")
+	for _, s := range comments {
+		s = strings.TrimSpace(s)
+		if len(s) == 0 {
+			continue
+		}
+		s = strings.TrimSpace(s[2:])
+		if !strings.HasPrefix(s, "@") {
+			anno.Comment = s
+			continue
+		}
+		sub := regexp.MustCompile(`(?i)@([a-z_]*)\s*(.*)`).FindStringSubmatch(strings.ReplaceAll(s, " ", ""))
+		switch sub[1] {
+		case "Path":
+			if len(sub[2]) == 0 {
+				_, _ = fmt.Fprintln(os.Stderr, "\u001B[31mWARN\u001B[m: the path annotation is empty,use the default value.")
+				continue
+			}
+			anno.Path = sub[2][2 : len(sub[2])-2]
+		case "Auth":
+			anno.Auth = true
+		case "Operations":
+			anno.Operations = true
+		case "Validate":
+			anno.Validate = true
+		case "Customs":
+			if len(sub[2]) == 0 {
+				_, _ = fmt.Fprintln(os.Stderr, "\u001B[31mWARN\u001B[m: the custom annotation is empty.")
+				continue
+			}
+			anno.Customs = strings.Split(sub[2][2:len(sub[2])-2], ",")
+		default:
+			_, _ = fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: %s is not a valid annotation.\n", sub[1])
+			err = fmt.Errorf("%s is not a valid annotation", sub[1])
+			return
+		}
+	}
+	return
+}
+
 func buildPrefix(serviceName string) string {
 	prefix := "api/" + strings.ReplaceAll(serviceName, ".", "/")
 	return strings.ToLower(prefix)
 }
+
 func camelCaseVars(s string) string {
 	vars := make([]string, 0)
 	subs := strings.Split(s, ".")
