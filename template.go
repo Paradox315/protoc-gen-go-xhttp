@@ -21,6 +21,7 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 	s.Route(func(r fiber.Router) {
 		api := r.Group("{{.ServicePrefix}}")
 	    {{- if .ServiceAnnotation}}
+		// Register all service annotation
 		{
 		{{- if .ServiceAnnotation.Auth}}
 		api.Use(middleware.Authenticator(),middleware.Authorizer())
@@ -39,22 +40,19 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 	
 		{{- range .Methods}}
 		{{- if .Annotation}}
-		api.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv),
+		api.{{.Method}}(
 		{{- if .Annotation.Auth}}
 			middleware.Authenticator(),middleware.Authorizer(),
 		{{- end}}
 		{{- if .Annotation.Operations}}
 			middleware.Operations(),
 		{{- end}}
-		{{- if .Annotation.Validate}}
-			middleware.Validator(),
-		{{- end}}
 		{{- if .Annotation.Customs}}
 			{{- range .Annotation.Customs}}
 				middleware.CustomMiddleware({{.}},
 			{{- end}}
 		{{- end}}
-		)
+		"{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv))
 		{{- else}}
 		api.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv))
 		{{- end}}
@@ -89,7 +87,11 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 			return err
 		}
 		{{- end}}
-		
+		{{- if .Annotation.Validate}}
+		if err := in.ValidateAll(); err != nil {
+			return ApiState.InvalidError().SendError(ctx, err.Error())
+		}
+		{{- end}}
 		reply, err := srv.{{.Name}}(ctx.Context(), &in)
 		if err != nil {
 			return err
