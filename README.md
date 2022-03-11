@@ -1,8 +1,8 @@
 # protoc-gen-go-xhttp
 ## 1 Introduction
-> protoc-gen-go-xhttp is a protoc plugin that generates Go code for
+> protoc-gen-go-xhttp is a protoc plugin that generates Go code for web services.
 ## 2 Installation
-> go install github.com/Paradox315/protoc-gen-go-xhttp@vlatest
+> go install github.com/Paradox315/protoc-gen-go-xhttp@latest
 ## 3 Usage
 ### 3.1 Generating Go code
 ```makefile
