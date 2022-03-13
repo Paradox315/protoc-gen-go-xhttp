@@ -87,16 +87,18 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 			return err
 		}
 		{{- end}}
+		{{- if .Annotation}}
 		{{- if .Annotation.Validate}}
 		if err := in.ValidateAll(); err != nil {
-			return ApiState.InvalidError().SendError(ctx, err.Error())
+			return apistate.InvalidError().WithError(err).Send(ctx)
 		}
+		{{- end}}
 		{{- end}}
 		reply, err := srv.{{.Name}}(ctx.Context(), &in)
 		if err != nil {
-			return err
+			return apistate.Error().WithError(err).Send(ctx)
 		}
-		return ApiState.Success().SendData(ctx, reply)
+		return apistate.Success().WithData(reply).Send(ctx)
 	}
 }
 {{end}}

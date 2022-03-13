@@ -76,7 +76,9 @@ func genService(gen *protogen.Plugin, file *protogen.File, g *protogen.Generated
 		return
 	}
 	sd.ServiceAnnotation = anno
-	sd.ServiceComments = anno.Comment
+	if anno != nil && anno.Comment != "" {
+		sd.ServiceComments = anno.Comment
+	}
 	if len(anno.Path) != 0 {
 		sd.ServicePrefix = "api/" + anno.Path
 	} else {
@@ -156,7 +158,9 @@ func buildHTTPRule(g *protogen.GeneratedFile, m *protogen.Method, rule *annotati
 		log.Panicf("buildAnnotation error: %v", err)
 	}
 	md.Annotation = anno
-	md.Comments = anno.Comment
+	if anno != nil && anno.Comment != "" {
+		md.Comments = anno.Comment
+	}
 	if method == "Get" || method == "Delete" {
 		if body != "" {
 			_, _ = fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: %s %s body should not be declared.\n", method, path)
@@ -183,15 +187,15 @@ func buildHTTPRule(g *protogen.GeneratedFile, m *protogen.Method, rule *annotati
 func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method, method, path string) *methodDesc {
 	defer func() { methodSets[m.GoName]++ }()
 
-	return &methodDesc{
-		Name:     m.GoName,
-		Num:      methodSets[m.GoName],
-		Request:  g.QualifiedGoIdent(m.Input.GoIdent),
-		Reply:    g.QualifiedGoIdent(m.Output.GoIdent),
-		Path:     path,
-		Method:   method,
-		Comments: m.Comments.Leading.String()[:len(m.Comments.Leading.String())-1],
+	md := &methodDesc{
+		Name:    m.GoName,
+		Num:     methodSets[m.GoName],
+		Request: g.QualifiedGoIdent(m.Input.GoIdent),
+		Reply:   g.QualifiedGoIdent(m.Output.GoIdent),
+		Path:    path,
+		Method:  method,
 	}
+	return md
 }
 
 func hasPathParams(path string) bool {
