@@ -19,6 +19,8 @@ const (
 	transportHTTPPackage = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp")
 	bindingPackage       = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp/binding")
 	middlewarePackage    = protogen.GoImportPath("github.com/go-kratos/kratos/v2/middleware")
+	fiberPackage         = protogen.GoImportPath("github.com/gofiber/fiber/v2")
+	apistatePackage      = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp/apistate")
 )
 
 var methodSets = make(map[string]int)
@@ -51,7 +53,7 @@ func generateFileContent(gen *protogen.Plugin, file *protogen.File, g *protogen.
 	g.P("var _ = ", bindingPackage.Ident("BindBody"))
 	g.P("const _ = ", transportHTTPPackage.Ident("SupportPackageIsVersion1"))
 	g.P("const _ = ", middlewarePackage.Ident("SupportPackageIsVersion1"))
-
+	g.P("var _ = new(", apistatePackage.Ident("Resp"), ")")
 	g.P()
 
 	for _, service := range file.Services {
