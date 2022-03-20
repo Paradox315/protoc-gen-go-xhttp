@@ -256,7 +256,7 @@ func buildAnnotation(comment string) (anno *annotation, err error) {
 }
 
 func buildPrefix(serviceName string) string {
-	prefix := "api/" + strings.ReplaceAll(serviceName, ".", "/")
+	prefix := strings.ReplaceAll(serviceName, ".", "/")
 	return strings.ToLower(prefix)
 }
 
