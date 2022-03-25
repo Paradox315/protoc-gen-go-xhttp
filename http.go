@@ -17,6 +17,7 @@ const (
 	// The name of the package that contains the generated code.
 	contextPackage       = protogen.GoImportPath("context")
 	transportHTTPPackage = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp")
+	transportPackage     = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport")
 	bindingPackage       = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp/binding")
 	middlewarePackage    = protogen.GoImportPath("github.com/go-kratos/kratos/v2/middleware")
 	fiberPackage         = protogen.GoImportPath("github.com/gofiber/fiber/v2")
@@ -38,6 +39,7 @@ func generateFile(gen *protogen.Plugin, file *protogen.File, omitempty bool) *pr
 	g.P()
 	g.P("package ", file.GoPackageName)
 	g.P()
+	g.P("import fiber \"github.com/gofiber/fiber/v2\"")
 	generateFileContent(gen, file, g, omitempty)
 	return g
 }
@@ -53,6 +55,7 @@ func generateFileContent(gen *protogen.Plugin, file *protogen.File, g *protogen.
 	g.P("var _ = ", bindingPackage.Ident("BindBody"))
 	g.P("const _ = ", transportHTTPPackage.Ident("SupportPackageIsVersion1"))
 	g.P("const _ = ", middlewarePackage.Ident("SupportPackageIsVersion1"))
+	g.P("const _ = ", transportPackage.Ident("KindXHTTP"))
 	g.P("var _ = new(", apistatePackage.Ident("Resp"), ")")
 	g.P()
 

@@ -65,40 +65,41 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 {{range .Methods}}
 // {{.Comments}}
 func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) fiber.Handler {
-	return func(ctx *fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		var in {{.Request}}
 		{{- if .HasBody}}
-		if err := binding.BindBody(ctx, &in{{.Body}}); err != nil {
-			return err
+		if err := binding.BindBody(c, &in{{.Body}}); err != nil {
+			return apistate.Error().WithError(err).Send(c)
 		}
 		
 		{{- if not (eq .Body "")}}
-		if err := binding.BindQuery(ctx, &in); err != nil {
-			return err
+		if err := binding.BindQuery(c, &in); err != nil {
+			return apistate.Error().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- else if not .HasParams}}
-		if err := binding.BindQuery(ctx, &in); err != nil {
-			return err
+		if err := binding.BindQuery(c, &in); err != nil {
+			return apistate.Error().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- if .HasParams}}
-		if err := binding.BindParams(ctx, &in); err != nil {
-			return err
+		if err := binding.BindParams(c, &in); err != nil {
+			return apistate.Error().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- if .Annotation}}
 		{{- if .Annotation.Validate}}
 		if err := in.ValidateAll(); err != nil {
-			return apistate.InvalidError().WithError(err).Send(ctx)
+			return apistate.InvalidError().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- end}}
-		reply, err := srv.{{.Name}}(ctx.Context(), &in)
+		ctx := transport.NewFiberContext(context.Background(),c)
+		reply, err := srv.{{.Name}}(ctx, &in)
 		if err != nil {
-			return apistate.Error().WithError(err).Send(ctx)
+			return apistate.Error().WithError(err).Send(c)
 		}
-		return apistate.Success().WithData(reply).Send(ctx)
+		return apistate.Success().WithData(reply).Send(c)
 	}
 }
 {{end}}
