@@ -89,6 +89,9 @@ func genService(gen *protogen.Plugin, file *protogen.File, g *protogen.Generated
 	} else {
 		sd.ServicePrefix = buildPrefix(string(service.Desc.FullName()))
 	}
+	if anno != nil && len(anno.Name) == 0 {
+		anno.Name = sd.ServiceType + "-XHTTPServer"
+	}
 	for _, method := range service.Methods {
 		if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
 			continue
@@ -166,6 +169,9 @@ func buildHTTPRule(g *protogen.GeneratedFile, m *protogen.Method, rule *annotati
 	if anno != nil && anno.Comment != "" {
 		md.Comments = anno.Comment
 	}
+	if anno != nil && len(anno.Name) == 0 {
+		anno.Name = fmt.Sprintf("%s.%d-XHTTP_Handler", m.GoName, md.Num)
+	}
 	if method == "Get" || method == "Delete" {
 		if body != "" {
 			_, _ = fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: %s %s body should not be declared.\n", method, path)
@@ -237,6 +243,12 @@ func buildAnnotation(comment string) (anno *annotation, err error) {
 				continue
 			}
 			anno.Path = sub[2][2 : len(sub[2])-2]
+		case "Name":
+			if len(sub[2]) == 0 {
+				_, _ = fmt.Fprintln(os.Stderr, "\u001B[31mWARN\u001B[m: the name annotation is empty,use the default value.")
+				continue
+			}
+			anno.Name = sub[2][2 : len(sub[2])-2]
 		case "Auth":
 			anno.Auth = true
 		case "Operations":
@@ -252,7 +264,7 @@ func buildAnnotation(comment string) (anno *annotation, err error) {
 		default:
 			_, _ = fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: %s is not a valid annotation.\n", sub[1])
 			err = fmt.Errorf("%s is not a valid annotation", sub[1])
-			return
+			return nil, err
 		}
 	}
 	return

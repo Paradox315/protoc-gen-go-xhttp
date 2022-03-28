@@ -60,7 +60,7 @@ func Test_buildAnnotation(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		wantAnno annotation
+		wantAnno *annotation
 		wantErr  assert.ErrorAssertionFunc
 	}{
 		{
@@ -68,7 +68,7 @@ func Test_buildAnnotation(t *testing.T) {
 			args: args{
 				comment: "",
 			},
-			wantAnno: annotation{},
+			wantAnno: nil,
 			wantErr:  assert.NoError,
 		},
 		{
@@ -78,7 +78,7 @@ func Test_buildAnnotation(t *testing.T) {
 					// hello world
             `,
 			},
-			wantAnno: annotation{
+			wantAnno: &annotation{
 				Comment: "hello world",
 			},
 			wantErr: assert.NoError,
@@ -90,7 +90,7 @@ func Test_buildAnnotation(t *testing.T) {
 					// @Path("demo")
 			`,
 			},
-			wantAnno: annotation{
+			wantAnno: &annotation{
 				Path: "demo",
 			},
 			wantErr: assert.NoError,
@@ -102,7 +102,7 @@ func Test_buildAnnotation(t *testing.T) {
 					// @Auth
 			`,
 			},
-			wantAnno: annotation{
+			wantAnno: &annotation{
 				Auth: true,
 			},
 			wantErr: assert.NoError,
@@ -114,8 +114,20 @@ func Test_buildAnnotation(t *testing.T) {
 					// @Customs("cache,etag")
 			`,
 			},
-			wantAnno: annotation{
+			wantAnno: &annotation{
 				Customs: []string{"cache", "etag"},
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "with name annotation",
+			args: args{
+				comment: `
+					// @Name("demo")
+			`,
+			},
+			wantAnno: &annotation{
+				Name: "demo",
 			},
 			wantErr: assert.NoError,
 		},
@@ -126,7 +138,7 @@ func Test_buildAnnotation(t *testing.T) {
 					// @RequestParam("name")
 			`,
 			},
-			wantAnno: annotation{},
+			wantAnno: nil,
 			wantErr:  assert.Error,
 		},
 	}

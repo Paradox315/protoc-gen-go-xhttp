@@ -23,6 +23,7 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 	    {{- if .ServiceAnnotation}}
 		// Register all service annotation
 		{
+		api.Name("{{.ServiceAnnotation.Name}}")
 		{{- if .ServiceAnnotation.Auth}}
 		api.Use(middleware.Authenticator(),middleware.Authorizer())
 		{{- end}}
@@ -52,9 +53,9 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 				middleware.CustomMiddleware({{.}},
 			{{- end}}
 		{{- end}}
-		"{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv))
+		"{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv)).Name("{{$svrType}}-{{.Annotation.Name}}")
 		{{- else}}
-		api.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv))
+		api.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv)).Name("{{$svrType}}-{{.Name}}.{{.Num}}-XHTTP_Handler")
 		{{- end}}
 		
 		
@@ -63,7 +64,9 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 }
 
 {{range .Methods}}
+{{- if not (eq .Comments "")}}
 // {{.Comments}}
+{{- end}}
 func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var in {{.Request}}
@@ -152,6 +155,7 @@ func (s *serviceDesc) execute() string {
 type annotation struct {
 	Comment    string
 	Path       string
+	Name       string
 	Auth       bool
 	Operations bool
 	Validate   bool
