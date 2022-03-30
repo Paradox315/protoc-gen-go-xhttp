@@ -72,37 +72,37 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 		var in {{.Request}}
 		{{- if .HasBody}}
 		if err := binding.BindBody(c, &in{{.Body}}); err != nil {
-			return apistate.Error().WithError(err).Send(c)
+			return apistate.Error[any]().WithError(err).Send(c)
 		}
 		
 		{{- if not (eq .Body "")}}
 		if err := binding.BindQuery(c, &in); err != nil {
-			return apistate.Error().WithError(err).Send(c)
+			return apistate.Error[any]().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- else if not .HasParams}}
 		if err := binding.BindQuery(c, &in); err != nil {
-			return apistate.Error().WithError(err).Send(c)
+			return apistate.Error[any]().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- if .HasParams}}
 		if err := binding.BindParams(c, &in); err != nil {
-			return apistate.Error().WithError(err).Send(c)
+			return apistate.Error[any]().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- if .Annotation}}
 		{{- if .Annotation.Validate}}
 		if err := in.ValidateAll(); err != nil {
-			return apistate.InvalidError().WithError(err).Send(c)
+			return apistate.InvalidError[any]().WithError(err).Send(c)
 		}
 		{{- end}}
 		{{- end}}
 		ctx := transport.NewFiberContext(context.Background(),c)
 		reply, err := srv.{{.Name}}(ctx, &in)
 		if err != nil {
-			return apistate.Error().WithError(err).Send(c)
+			return apistate.Error[any]().WithError(err).Send(c)
 		}
-		return apistate.Success().WithData(reply).Send(c)
+		return apistate.Success[*{{.Reply}}]().WithData(reply).Send(c)
 	}
 }
 {{end}}
