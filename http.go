@@ -56,7 +56,7 @@ func generateFileContent(gen *protogen.Plugin, file *protogen.File, g *protogen.
 	g.P("const _ = ", transportHTTPPackage.Ident("SupportPackageIsVersion1"))
 	g.P("const _ = ", middlewarePackage.Ident("SupportPackageIsVersion1"))
 	g.P("const _ = ", transportPackage.Ident("KindXHTTP"))
-	g.P("var _ = new(", apistatePackage.Ident("Resp"), ")")
+	g.P("var _ = new(", apistatePackage.Ident("Resp[any]"), ")")
 	g.P()
 
 	for _, service := range file.Services {
