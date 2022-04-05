@@ -41,7 +41,7 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 	
 		{{- range .Methods}}
 		{{- if .Annotation}}
-		api.{{.Method}}("{{.Path}}",
+		api.{{.Method}}(
 		{{- if .Annotation.Auth}}
 			middleware.Authenticator(),middleware.Authorizer(),
 		{{- end}}
@@ -53,7 +53,7 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 				middleware.CustomMiddleware({{.}},
 			{{- end}}
 		{{- end}}
-		 _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv)).Name("{{$svrType}}-{{.Annotation.Name}}")
+		"{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv)).Name("{{$svrType}}-{{.Annotation.Name}}")
 		{{- else}}
 		api.{{.Method}}("{{.Path}}", _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv)).Name("{{$svrType}}-{{.Name}}.{{.Num}}-XHTTP_Handler")
 		{{- end}}
