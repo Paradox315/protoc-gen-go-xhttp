@@ -92,7 +92,7 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 		{{- end}}
 		{{- if .Annotation}}
 		{{- if .Annotation.Validate}}
-		if err := in.ValidateAll(); err != nil {
+		if err := in.Validate(); err != nil {
 			return apistate.InvalidError[any]().WithError(err).Send(c)
 		}
 		{{- end}}
