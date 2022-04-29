@@ -20,7 +20,6 @@ const (
 	transportPackage     = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport")
 	bindingPackage       = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp/binding")
 	middlewarePackage    = protogen.GoImportPath("github.com/go-kratos/kratos/v2/middleware")
-	fiberPackage         = protogen.GoImportPath("github.com/gofiber/fiber/v2")
 	apistatePackage      = protogen.GoImportPath("github.com/go-kratos/kratos/v2/transport/xhttp/apistate")
 )
 
@@ -231,10 +230,12 @@ func buildAnnotation(comment string) (anno *annotation, err error) {
 			continue
 		}
 		s = strings.TrimSpace(s[2:])
+		// 如果注释中没有@符号，则认为是方法注释
 		if !strings.HasPrefix(s, "@") {
 			anno.Comment = s
 			continue
 		}
+		// 如果注释中有@符号，则认为是功能注释
 		sub := regexp.MustCompile(`(?i)@([a-z_]*)\s*(.*)`).FindStringSubmatch(strings.ReplaceAll(s, " ", ""))
 		switch sub[1] {
 		case "Path":
@@ -255,6 +256,10 @@ func buildAnnotation(comment string) (anno *annotation, err error) {
 			anno.Operations = true
 		case "Validate":
 			anno.Validate = true
+		case "Cacheable", "Cache":
+			anno.Cacheable = true
+		case "Limit", "Limiter":
+			anno.Limit = true
 		case "Customs":
 			if len(sub[2]) == 0 {
 				_, _ = fmt.Fprintln(os.Stderr, "\u001B[31mWARN\u001B[m: the custom annotation is empty.")

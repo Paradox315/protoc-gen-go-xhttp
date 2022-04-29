@@ -27,6 +27,12 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 		{{- if .ServiceAnnotation.Auth}}
 		api.Use(middleware.Authenticator(),middleware.Authorizer())
 		{{- end}}
+		{{- if .ServiceAnnotation.Cacheable}}
+		api.Use(middleware.Cache())
+		{{- end}}
+		{{- if .ServiceAnnotation.Limit}}
+		api.Use(middleware.Limiter())
+		{{- end}}
 		{{- if .ServiceAnnotation.Operations}}
 		api.Use(middleware.Operations())
 		{{- end}}
@@ -44,6 +50,12 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 		api.{{.Method}}("{{.Path}}", 
 		{{- if .Annotation.Auth}}
 			middleware.Authenticator(),middleware.Authorizer(),
+		{{- end}}
+		{{- if .Annotation.Cacheable}}
+			middleware.Cache(),
+		{{- end}}
+		{{- if .Annotation.Limit}}
+			middleware.Limiter(),
 		{{- end}}
 		{{- if .Annotation.Operations}}
 			middleware.Operations(),
@@ -159,5 +171,7 @@ type annotation struct {
 	Auth       bool
 	Operations bool
 	Validate   bool
+	Cacheable  bool
+	Limit      bool
 	Customs    []string
 }
