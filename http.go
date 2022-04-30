@@ -209,11 +209,11 @@ func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method, method, path
 }
 
 func hasPathParams(path string) bool {
-	return regexp.MustCompile(`(?i){([a-z\.0-9_\s]*)}`).MatchString(path)
+	return regexp.MustCompile(`(?i){([a-z.\d_\s]*)}`).MatchString(path)
 }
 
 func buildPath(path string) string {
-	return regexp.MustCompile(`(?i){([a-z\.0-9_\s]*)}`).ReplaceAllStringFunc(path, func(s string) string {
+	return regexp.MustCompile(`(?i){([a-z.\d_\s]*)}`).ReplaceAllStringFunc(path, func(s string) string {
 		return ":" + strings.TrimSpace(s[1:len(s)-1])
 	})
 }
@@ -260,6 +260,8 @@ func buildAnnotation(comment string) (anno *annotation, err error) {
 			anno.Cacheable = true
 		case "Limit", "Limiter":
 			anno.Limit = true
+		case "Logger":
+			anno.Logger = true
 		case "Customs":
 			if len(sub[2]) == 0 {
 				_, _ = fmt.Fprintln(os.Stderr, "\u001B[31mWARN\u001B[m: the custom annotation is empty.")

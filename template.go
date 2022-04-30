@@ -36,8 +36,8 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 		{{- if .ServiceAnnotation.Operations}}
 		api.Use(middleware.Operations())
 		{{- end}}
-		{{- if .ServiceAnnotation.Operations}}
-		api.Use(middleware.Validator())
+		{{- if .ServiceAnnotation.Logger}}
+		api.Use(middleware.Logger())
 		{{- end}}
 		{{- range .ServiceAnnotation.Customs}}
 		api.Use(middleware.CustomMiddleware({{.}}))
@@ -59,6 +59,9 @@ func Register{{.ServiceType}}XHTTPServer(s *xhttp.Server, srv {{.ServiceType}}XH
 		{{- end}}
 		{{- if .Annotation.Operations}}
 			middleware.Operations(),
+		{{- end}}
+		{{- if .Annotation.Logger}}
+			middleware.Logger(),
 		{{- end}}
 		{{- if .Annotation.Customs}}
 			{{- range .Annotation.Customs}}
@@ -170,6 +173,7 @@ type annotation struct {
 	Name       string
 	Auth       bool
 	Operations bool
+	Logger     bool
 	Validate   bool
 	Cacheable  bool
 	Limit      bool
