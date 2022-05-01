@@ -95,7 +95,7 @@ func _{{$svrType}}_{{.Name}}{{.Num}}_XHTTP_Handler(srv {{$svrType}}XHTTPServer) 
 			return apistate.Error[any]().WithError(err).Send(c)
 		}
 		{{- end}}
-		{{- else if not .HasParams}}
+		{{- else}}
 		if err := binding.BindQuery(c, &in); err != nil {
 			return apistate.Error[any]().WithError(err).Send(c)
 		}
